@@ -2,7 +2,7 @@
 //! you are building an executable. If you are making a library, the convention
 //! is to delete this file and start with root.zig instead.
 const std = @import("std");
-
+const Allocator = std.mem.Allocator;
 // Reference material:
 // Image manipulation: https://pedropark99.github.io/zig-book/Chapters/13-image-filter.html
 // Matrix multiplication: https://svaniksharma.github.io/posts/2023-05-07-optimizing-matrix-multiplication-with-zig/
@@ -72,7 +72,7 @@ pub const Arr = struct {
     // Number of dimensions
     ndim: usize, 
     // Total number of elements in the array
-    size: usize, 
+    size: usize,
 
     pub fn deinit(self: *Arr, allocator: std.mem.Allocator) void {
         allocator.free(self.shape);
@@ -173,7 +173,7 @@ fn create_arr_zeros(allocator: std.mem.Allocator, shape: []const usize) !*Arr {
 // The reason for looping from the last dimension, to the first when calculating
 // strides for multi-dim arrays, is because of how they're generally laid out in memory.
 //
-// This is related to `row-major order`, which is the standard memory layout for multi-dim 
+// Thijs is related to `row-major order`, which is the standard memory layout for multi-dim 
 // arrays in many languages.
 //
 // Memory layout: in `row-major order`, elements that are adjacent in the last dimension,
@@ -191,18 +191,35 @@ fn create_arr_zeros(allocator: std.mem.Allocator, shape: []const usize) !*Arr {
 // arr.strides has the same number of elements as ndim, i.e 3 elements.
 // arr.strides[i] == arr.strides[2] = 1, 
 }
-// fn create_zero_tensor(shape: *[]i32, ndim: i32) void {
-    // const d: *Arr = create_arr_zeros(shape, ndim);
-    // var tensor: *Tensor = ()
-// }
+fn create_zero_tensor(allocator: Allocator, values: []const f32, shape: []const usize) !*Tensor {
+    const t = try allocator.create(Tensor);
+    errdefer allocator.destroy(t);
+    t.data = try create_arr(allocator, values, shape);
+    errdefer t.data.deinit(allocator);
+
+    t.grad = try create_arr_zeros(allocator, shape);
+    errdefer t.grad.deinit(allocator);
+
+    t.op = -1;
+    t.num_prevs = 0;
+    return t;
+}
 fn mat_mul2d(a: *Tensor, b: *Tensor) *Tensor {
-    const p: i32 = a.data.shape[0];
-    const q: i32 = a.data.shape[1];
+    const p = a.data.shape[0];
+    const q = a.data.shape[1];
     const r = b.data.shape[1];
+    const t = create_zero_tensor(Allocator, p, q, 2);
+    var i: usize = 0;
+    var j: usize = 0;
+    while (i < p) {
+        while ( j < p) {
+            var temp = 0.0;
+        }
+    }
 
     // tensor: *Tensor = create_zero_tensor()
 }
-fn mat_mul_backward()
+// fn mat_mul_backward()
 
 // Our input, w1, and w2 are tensors, and we need to find specific values of w1 and w2
 // that make the function work.
@@ -210,7 +227,7 @@ fn mat_mul_backward()
 // that operates on the outputs of the network, and the labelled ones, and returns
 // a score representing how good the network is.
 
-fn loss_fn(logsoftmax_outputs: Arr, labels: Arr, a: Arr) f32 {
+fn loss(logsoftmax_outputs: Arr, labels: Arr, a: Arr) f32 {
     var s: f32 = 0.0;
     for (0..logsoftmax_outputs.size) |i| {
         s += a.data[i] * labels.data[i] * -1;
